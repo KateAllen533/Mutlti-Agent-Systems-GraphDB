@@ -1,0 +1,11 @@
+id,name,email,department,salary,hire_date,manager_id
+1,John Doe,john.doe@company.com,Engineering,75000,2020-01-15,5
+2,Jane Smith,jane.smith@company.com,Marketing,65000,2019-03-22,3
+3,Bob Johnson,bob.johnson@company.com,Engineering,80000,2018-11-10,5
+4,Alice Brown,alice.brown@company.com,HR,60000,2021-06-05,6
+5,Charlie Wilson,charlie.wilson@company.com,Engineering,90000,2017-09-12,
+6,Diana Lee,diana.lee@company.com,HR,70000,2019-12-01,
+7,Eve Davis,eve.davis@company.com,Marketing,62000,2020-08-18,3
+8,Frank Miller,frank.miller@company.com,Engineering,78000,2021-02-14,5
+9,Grace Taylor,grace.taylor@company.com,Finance,68000,2020-05-30,10
+10,Henry Clark,henry.clark@company.com,Finance,72000,2018-07-25,

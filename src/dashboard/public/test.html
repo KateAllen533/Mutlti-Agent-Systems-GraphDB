@@ -1,0 +1,123 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Test Dashboard</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 20px;
+            background-color: #f0f0f0;
+        }
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        h1 {
+            color: #333;
+            text-align: center;
+        }
+        .status {
+            background: #e8f5e8;
+            border: 1px solid #4caf50;
+            padding: 15px;
+            border-radius: 5px;
+            margin: 20px 0;
+        }
+        .api-test {
+            background: #e3f2fd;
+            border: 1px solid #2196f3;
+            padding: 15px;
+            border-radius: 5px;
+            margin: 20px 0;
+        }
+        button {
+            background: #2196f3;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 5px;
+            cursor: pointer;
+            margin: 5px;
+        }
+        button:hover {
+            background: #1976d2;
+        }
+        #result {
+            margin-top: 10px;
+            padding: 10px;
+            background: #f5f5f5;
+            border-radius: 5px;
+            white-space: pre-wrap;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🚀 Multi-Agent Data System Dashboard</h1>
+        
+        <div class="status">
+            <h3>✅ System Status</h3>
+            <p><strong>API Server:</strong> Running on port 3000</p>
+            <p><strong>Dashboard:</strong> Running on port 3001</p>
+            <p><strong>Status:</strong> All systems operational</p>
+        </div>
+
+        <div class="api-test">
+            <h3>🔧 API Test</h3>
+            <button onclick="testAgents()">Test Agent Status</button>
+            <button onclick="testJobs()">Test Job History</button>
+            <button onclick="testUpload()">Test File Upload</button>
+            <div id="result"></div>
+        </div>
+
+        <div class="status">
+            <h3>📊 Available Features</h3>
+            <ul>
+                <li>✅ Data Loading (CSV, Excel, JSON)</li>
+                <li>✅ Data Structuring & Cleaning</li>
+                <li>✅ Graph Modeling (Demo Mode)</li>
+                <li>✅ Real-time Monitoring</li>
+                <li>✅ WebSocket Updates</li>
+            </ul>
+        </div>
+
+        <div class="api-test">
+            <h3>🎯 Quick Actions</h3>
+            <button onclick="window.open('http://localhost:3001', '_blank')">Open Full Dashboard</button>
+            <button onclick="window.open('http://localhost:3000/api/agents/status', '_blank')">View API Status</button>
+        </div>
+    </div>
+
+    <script>
+        async function testAgents() {
+            try {
+                const response = await fetch('http://localhost:3000/api/agents/status');
+                const data = await response.json();
+                document.getElementById('result').textContent = 'Agent Status:\n' + JSON.stringify(data, null, 2);
+            } catch (error) {
+                document.getElementById('result').textContent = 'Error: ' + error.message;
+            }
+        }
+
+        async function testJobs() {
+            try {
+                const response = await fetch('http://localhost:3000/api/jobs/history');
+                const data = await response.json();
+                document.getElementById('result').textContent = 'Job History:\n' + JSON.stringify(data, null, 2);
+            } catch (error) {
+                document.getElementById('result').textContent = 'Error: ' + error.message;
+            }
+        }
+
+        async function testUpload() {
+            document.getElementById('result').textContent = 'Upload test: Use the full dashboard or API endpoints to upload files.';
+        }
+    </script>
+</body>
+</html>

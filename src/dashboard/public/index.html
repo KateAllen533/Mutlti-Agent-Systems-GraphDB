@@ -1,0 +1,350 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Multi-Agent Data System Dashboard</title>
+    <script src="https://unpkg.com/vis-network/standalone/umd/vis-network.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://unpkg.com/react@18/umd/react.development.js"></script>
+    <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <div id="root"></div>
+    
+    <script type="text/babel">
+        const { useState, useEffect, useRef } = React;
+        
+        const Dashboard = () => {
+            const [graphData, setGraphData] = useState({ nodes: [], edges: [] });
+            const [insights, setInsights] = useState(null);
+            const [agentStatus, setAgentStatus] = useState({});
+            const [visualization, setVisualization] = useState(null);
+            const [isLoading, setIsLoading] = useState(false);
+            const [socket, setSocket] = useState(null);
+            const networkRef = useRef(null);
+            const containerRef = useRef(null);
+
+            useEffect(() => {
+                // Initialize socket connection
+                const newSocket = io();
+                setSocket(newSocket);
+
+                // Load initial data
+                loadGraphData();
+                loadInsights();
+                loadAgentStatus();
+
+                // Set up socket listeners
+                newSocket.on('graph-update', (data) => {
+                    setGraphData(data);
+                    if (networkRef.current) {
+                        networkRef.current.setData(data);
+                    }
+                });
+
+                newSocket.on('insights-update', (data) => {
+                    setInsights(data);
+                });
+
+                newSocket.on('agent-update', (data) => {
+                    setAgentStatus(prev => ({
+                        ...prev,
+                        [data.agent]: data
+                    }));
+                });
+
+                newSocket.on('error', (error) => {
+                    console.error('Socket error:', error);
+                });
+
+                return () => {
+                    newSocket.close();
+                };
+            }, []);
+
+            useEffect(() => {
+                if (containerRef.current && graphData.nodes.length > 0) {
+                    initializeNetwork();
+                }
+            }, [graphData]);
+
+            const loadGraphData = async () => {
+                try {
+                    const response = await fetch('/api/graph');
+                    const data = await response.json();
+                    setGraphData(data);
+                } catch (error) {
+                    console.error('Failed to load graph data:', error);
+                }
+            };
+
+            const loadInsights = async () => {
+                try {
+                    const response = await fetch('/api/insights');
+                    const data = await response.json();
+                    setInsights(data);
+                } catch (error) {
+                    console.error('Failed to load insights:', error);
+                }
+            };
+
+            const loadAgentStatus = async () => {
+                try {
+                    const response = await fetch('/api/agents/status');
+                    const data = await response.json();
+                    setAgentStatus(data);
+                } catch (error) {
+                    console.error('Failed to load agent status:', error);
+                }
+            };
+
+            const initializeNetwork = () => {
+                const options = {
+                    nodes: {
+                        shape: 'dot',
+                        size: 20,
+                        font: {
+                            size: 12,
+                            color: '#000000'
+                        },
+                        borderWidth: 2,
+                        shadow: true
+                    },
+                    edges: {
+                        width: 2,
+                        color: { inherit: 'from' },
+                        smooth: {
+                            type: 'continuous'
+                        },
+                        font: {
+                            size: 10,
+                            color: '#000000'
+                        }
+                    },
+                    physics: {
+                        stabilization: { iterations: 100 }
+                    },
+                    interaction: {
+                        hover: true,
+                        tooltipDelay: 200
+                    }
+                };
+
+                const data = {
+                    nodes: new vis.DataSet(graphData.nodes),
+                    edges: new vis.DataSet(graphData.edges)
+                };
+
+                networkRef.current = new vis.Network(containerRef.current, data, options);
+
+                networkRef.current.on('selectNode', (params) => {
+                    if (params.nodes.length > 0) {
+                        const nodeId = params.nodes[0];
+                        const node = graphData.nodes.find(n => n.id === nodeId);
+                        console.log('Selected node:', node);
+                    }
+                });
+
+                networkRef.current.on('selectEdge', (params) => {
+                    if (params.edges.length > 0) {
+                        const edgeId = params.edges[0];
+                        const edge = graphData.edges.find(e => e.id === edgeId);
+                        console.log('Selected edge:', edge);
+                    }
+                });
+            };
+
+            const generateVisualization = async () => {
+                setIsLoading(true);
+                try {
+                    const prompt = document.getElementById('visualization-prompt').value || 'Analyze this graph data and provide insights';
+                    const llmProvider = document.getElementById('llm-provider').value;
+                    
+                    const response = await fetch('/api/visualize', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json'
+                        },
+                        body: JSON.stringify({
+                            data: graphData,
+                            prompt,
+                            llmProvider
+                        })
+                    });
+                    
+                    const result = await response.json();
+                    setVisualization(result);
+                } catch (error) {
+                    console.error('Failed to generate visualization:', error);
+                } finally {
+                    setIsLoading(false);
+                }
+            };
+
+            const refreshData = () => {
+                loadGraphData();
+                loadInsights();
+                loadAgentStatus();
+            };
+
+            return (
+                <div className="dashboard">
+                    <header className="dashboard-header">
+                        <h1>Multi-Agent Data System Dashboard</h1>
+                        <div className="header-controls">
+                            <button onClick={refreshData} className="btn btn-primary">
+                                Refresh Data
+                            </button>
+                            <div className="agent-status-indicators">
+                                {Object.entries(agentStatus).map(([agent, status]) => (
+                                    <div key={agent} className={`status-indicator ${status.status}`}>
+                                        <span className="agent-name">{agent}</span>
+                                        <span className="status-dot"></span>
+                                    </div>
+                                ))}
+                            </div>
+                        </div>
+                    </header>
+
+                    <div className="dashboard-content">
+                        <div className="main-panel">
+                            <div className="graph-container">
+                                <h2>Graph Visualization</h2>
+                                <div ref={containerRef} className="network-container"></div>
+                                {graphData.metadata && (
+                                    <div className="graph-metadata">
+                                        <p>Nodes: {graphData.metadata.nodeCount} | Edges: {graphData.metadata.edgeCount}</p>
+                                        <p>Last Updated: {new Date(graphData.metadata.lastUpdated).toLocaleString()}</p>
+                                    </div>
+                                )}
+                            </div>
+                        </div>
+
+                        <div className="sidebar">
+                            <div className="insights-panel">
+                                <h3>Graph Insights</h3>
+                                {insights ? (
+                                    <div className="insights-content">
+                                        <div className="insight-summary">
+                                            <h4>Summary</h4>
+                                            <p>Nodes: {insights.summary.totalNodes}</p>
+                                            <p>Relationships: {insights.summary.totalRelationships}</p>
+                                            <p>Density: {insights.summary.density.toFixed(3)}</p>
+                                            <p>Connectivity: {insights.summary.connectivity}</p>
+                                        </div>
+                                        
+                                        {insights.patterns && insights.patterns.length > 0 && (
+                                            <div className="insight-patterns">
+                                                <h4>Patterns</h4>
+                                                {insights.patterns.map((pattern, index) => (
+                                                    <div key={index} className="pattern-item">
+                                                        <strong>{pattern.type}</strong>
+                                                        <p>{pattern.description}</p>
+                                                        <span className={`significance ${pattern.significance.toLowerCase()}`}>
+                                                            {pattern.significance}
+                                                        </span>
+                                                    </div>
+                                                ))}
+                                            </div>
+                                        )}
+
+                                        {insights.recommendations && insights.recommendations.length > 0 && (
+                                            <div className="insight-recommendations">
+                                                <h4>Recommendations</h4>
+                                                {insights.recommendations.map((rec, index) => (
+                                                    <div key={index} className="recommendation-item">
+                                                        <strong>{rec.type}</strong>
+                                                        <p>{rec.description}</p>
+                                                        <span className={`priority ${rec.priority.toLowerCase()}`}>
+                                                            {rec.priority}
+                                                        </span>
+                                                    </div>
+                                                ))}
+                                            </div>
+                                        )}
+                                    </div>
+                                ) : (
+                                    <p>Loading insights...</p>
+                                )}
+                            </div>
+
+                            <div className="llm-panel">
+                                <h3>LLM Visualization</h3>
+                                <div className="llm-controls">
+                                    <select id="llm-provider" className="form-control">
+                                        <option value="openai">OpenAI GPT-4</option>
+                                        <option value="anthropic">Anthropic Claude</option>
+                                    </select>
+                                    <textarea 
+                                        id="visualization-prompt" 
+                                        className="form-control"
+                                        placeholder="Enter your visualization prompt..."
+                                        rows="3"
+                                    ></textarea>
+                                    <button 
+                                        onClick={generateVisualization} 
+                                        className="btn btn-secondary"
+                                        disabled={isLoading}
+                                    >
+                                        {isLoading ? 'Generating...' : 'Generate Visualization'}
+                                    </button>
+                                </div>
+                                
+                                {visualization && (
+                                    <div className="visualization-result">
+                                        <h4>LLM Analysis</h4>
+                                        <div className="analysis-content">
+                                            <p><strong>Analysis:</strong> {visualization.visualization.analysis}</p>
+                                            
+                                            {visualization.visualization.patterns && (
+                                                <div>
+                                                    <strong>Patterns:</strong>
+                                                    <ul>
+                                                        {visualization.visualization.patterns.map((pattern, index) => (
+                                                            <li key={index}>{pattern}</li>
+                                                        ))}
+                                                    </ul>
+                                                </div>
+                                            )}
+                                            
+                                            {visualization.visualization.recommendations && (
+                                                <div>
+                                                    <strong>Recommendations:</strong>
+                                                    <ul>
+                                                        {visualization.visualization.recommendations.map((rec, index) => (
+                                                            <li key={index}>{rec}</li>
+                                                        ))}
+                                                    </ul>
+                                                </div>
+                                            )}
+                                            
+                                            <p><strong>Visualization Type:</strong> {visualization.visualization.visualizationType}</p>
+                                            
+                                            {visualization.visualization.interactiveFeatures && (
+                                                <div>
+                                                    <strong>Interactive Features:</strong>
+                                                    <ul>
+                                                        {visualization.visualization.interactiveFeatures.map((feature, index) => (
+                                                            <li key={index}>{feature}</li>
+                                                        ))}
+                                                    </ul>
+                                                </div>
+                                            )}
+                                        </div>
+                                        <small>Generated by {visualization.provider} at {new Date(visualization.timestamp).toLocaleString()}</small>
+                                    </div>
+                                )}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            );
+        };
+
+        ReactDOM.render(<Dashboard />, document.getElementById('root'));
+    </script>
+</body>
+</html>
